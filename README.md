@@ -21,7 +21,7 @@ Usually it takes ~8 minutes to complete. Webfolder: /web
 2. Select designer, copy/paste the .yml code directly
 or
 2. Use your S3 bucket/URL
-3. Start your stack, AWS will ask you basic questions like DB username, password, etc
+3. Start your stack, AWS will ask you basic questions like DB username, password, favicon, etc
 4. Wait for resources to deploy
 5. When completed, copy public IP address, set up your DNS
 6. SSH to your server, and run 'certbot' to issue a certificate
