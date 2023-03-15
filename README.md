@@ -10,7 +10,7 @@ What this will do:
 4. Configure web folder, logs, etc
 5. Pull an available IP address from existing ipv4 pool
 
-Usually it takes ~8 minutes to complete
+Usually it takes ~8 minutes to complete. Webfolder: /web
 
 #This script was provided AS-IS, no warranties, I would really appreciate your own commits
 
