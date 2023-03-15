@@ -1,0 +1,775 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  Basic CRM template with data on attached drive, own ip, LAMP, swap, ready to
+  setup
+Metadata:
+  Instances:
+    Description: CRM with DB
+Parameters:
+  InstanceType:
+    Description: WebServer EC2 instance type
+    Type: String
+    Default: t3.small
+    AllowedValues:
+      - t2.nano
+      - t2.micro
+      - t2.small
+      - t2.medium
+      - t2.large
+      - t2.xlarge
+      - t2.2xlarge
+      - t3.nano
+      - t3.micro
+      - t3.small
+      - t3.medium
+      - t3.large
+      - t3.xlarge
+      - t3.2xlarge
+      - m4.large
+      - m4.xlarge
+      - m4.2xlarge
+      - m4.4xlarge
+      - m4.10xlarge
+      - m5.large
+      - m5.xlarge
+      - m5.2xlarge
+      - m5.4xlarge
+      - c5.large
+      - c5.xlarge
+      - c5.2xlarge
+      - c5.4xlarge
+      - c5.9xlarge
+      - g3.8xlarge
+      - r5.large
+      - r5.xlarge
+      - r5.2xlarge
+      - r5.4xlarge
+      - r3.12xlarge
+      - i3.xlarge
+      - i3.2xlarge
+      - i3.4xlarge
+      - i3.8xlarge
+      - d2.xlarge
+      - d2.2xlarge
+      - d2.4xlarge
+      - d2.8xlarge
+  LatestAmiId:
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instances
+    Type: 'AWS::EC2::KeyPair::KeyName'
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+  SecurityGroup:
+    Description: Name of security group
+    Type: 'AWS::EC2::SecurityGroup::GroupName'
+  WebDomain:
+    Default: algohit.com
+    Description: 'domain name to be associated with this instance, required'
+    Type: String
+    MinLength: 4
+    MaxLength: 64
+  LinkToCRM:
+    Default: 'https://www.espocrm.com/downloads/EspoCRM-7.3.4.zip'
+    Description: link to the latest espocrm
+    Type: String
+    MinLength: 4
+    MaxLength: 64
+  LinkToFaviconIco:
+    Default: 'https://www.algohit.com/favicon196x196.png'
+    Description: link to favicon
+    Type: String
+    MinLength: 4
+    MaxLength: 128
+  LinkToFavicon196196:
+    Default: 'https://www.algohit.com/favicon.ico'
+    Description: link to favicon 196x196
+    Type: String
+    MinLength: 4
+    MaxLength: 128
+  PMAWhiteListIp:
+    Default: 127.0.0.1
+    Description: phpmyadmin whitelist ip address
+    Type: String
+    MinLength: 8
+    MaxLength: 16
+  DBName:
+    Default: espo
+    Description: CRM db
+    Type: String
+    MinLength: 1
+    MaxLength: 64
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: must begin with a letter and contain only alphanumeric characters.
+  DBUser:
+    NoEcho: true
+    Description: The espo database admin account username
+    Type: String
+    MinLength: 1
+    MaxLength: 16
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: must begin with a letter and contain only alphanumeric characters.
+  DBPassword:
+    NoEcho: true
+    Description: The espo database admin account password
+    Type: String
+    MinLength: 8
+    MaxLength: 41
+    AllowedPattern: '[a-zA-Z0-9]*'
+    ConstraintDescription: must contain only alphanumeric characters.
+  DBRootPassword:
+    NoEcho: true
+    Description: MySQL root password
+    Type: String
+    MinLength: 8
+    MaxLength: 41
+    AllowedPattern: '[a-zA-Z0-9]*'
+    ConstraintDescription: must contain only alphanumeric characters.
+Mappings:
+  AWSInstanceType2Arch:
+    t1.micro:
+      Arch: HVM64
+    t2.nano:
+      Arch: HVM64
+    t2.micro:
+      Arch: HVM64
+    t2.small:
+      Arch: HVM64
+    t2.medium:
+      Arch: HVM64
+    t2.large:
+      Arch: HVM64
+    m1.small:
+      Arch: HVM64
+    m1.medium:
+      Arch: HVM64
+    m1.large:
+      Arch: HVM64
+    m1.xlarge:
+      Arch: HVM64
+    m2.xlarge:
+      Arch: HVM64
+    m2.2xlarge:
+      Arch: HVM64
+    m2.4xlarge:
+      Arch: HVM64
+    m3.medium:
+      Arch: HVM64
+    m3.large:
+      Arch: HVM64
+    m3.xlarge:
+      Arch: HVM64
+    m3.2xlarge:
+      Arch: HVM64
+    m4.large:
+      Arch: HVM64
+    m4.xlarge:
+      Arch: HVM64
+    m4.2xlarge:
+      Arch: HVM64
+    m4.4xlarge:
+      Arch: HVM64
+    m4.10xlarge:
+      Arch: HVM64
+    c1.medium:
+      Arch: HVM64
+    c1.xlarge:
+      Arch: HVM64
+    c3.large:
+      Arch: HVM64
+    c3.xlarge:
+      Arch: HVM64
+    c3.2xlarge:
+      Arch: HVM64
+    c3.4xlarge:
+      Arch: HVM64
+    c3.8xlarge:
+      Arch: HVM64
+    c4.large:
+      Arch: HVM64
+    c4.xlarge:
+      Arch: HVM64
+    c4.2xlarge:
+      Arch: HVM64
+    c4.4xlarge:
+      Arch: HVM64
+    c4.8xlarge:
+      Arch: HVM64
+    g2.2xlarge:
+      Arch: HVMG2
+    g2.8xlarge:
+      Arch: HVMG2
+    r3.large:
+      Arch: HVM64
+    r3.xlarge:
+      Arch: HVM64
+    r3.2xlarge:
+      Arch: HVM64
+    r3.4xlarge:
+      Arch: HVM64
+    r3.8xlarge:
+      Arch: HVM64
+    i2.xlarge:
+      Arch: HVM64
+    i2.2xlarge:
+      Arch: HVM64
+    i2.4xlarge:
+      Arch: HVM64
+    i2.8xlarge:
+      Arch: HVM64
+    d2.xlarge:
+      Arch: HVM64
+    d2.2xlarge:
+      Arch: HVM64
+    d2.4xlarge:
+      Arch: HVM64
+    d2.8xlarge:
+      Arch: HVM64
+    hi1.4xlarge:
+      Arch: HVM64
+    hs1.8xlarge:
+      Arch: HVM64
+    cr1.8xlarge:
+      Arch: HVM64
+    cc2.8xlarge:
+      Arch: HVM64
+  AWSRegionArch2AMI:
+    us-east-1:
+      HVM64: ami-0ff8a91507f77f867
+      HVMG2: ami-0a584ac55a7631c0c
+    us-west-2:
+      HVM64: ami-a0cfeed8
+      HVMG2: ami-0e09505bc235aa82d
+    us-west-1:
+      HVM64: ami-0bdb828fd58c52235
+      HVMG2: ami-066ee5fd4a9ef77f1
+    eu-west-1:
+      HVM64: ami-047bb4163c506cd98
+      HVMG2: ami-0a7c483d527806435
+    eu-west-2:
+      HVM64: ami-f976839e
+      HVMG2: NOT_SUPPORTED
+    eu-west-3:
+      HVM64: ami-0ebc281c20e89ba4b
+      HVMG2: NOT_SUPPORTED
+    eu-central-1:
+      HVM64: ami-0233214e13e500f77
+      HVMG2: ami-06223d46a6d0661c7
+    ap-northeast-1:
+      HVM64: ami-06cd52961ce9f0d85
+      HVMG2: ami-053cdd503598e4a9d
+    ap-northeast-2:
+      HVM64: ami-0a10b2721688ce9d2
+      HVMG2: NOT_SUPPORTED
+    ap-northeast-3:
+      HVM64: ami-0d98120a9fb693f07
+      HVMG2: NOT_SUPPORTED
+    ap-southeast-1:
+      HVM64: ami-08569b978cc4dfa10
+      HVMG2: ami-0be9df32ae9f92309
+    ap-southeast-2:
+      HVM64: ami-09b42976632b27e9b
+      HVMG2: ami-0a9ce9fecc3d1daf8
+    ap-south-1:
+      HVM64: ami-0912f71e06545ad88
+      HVMG2: ami-097b15e89dbdcfcf4
+    us-east-2:
+      HVM64: ami-0b59bfac6be064b78
+      HVMG2: NOT_SUPPORTED
+    ca-central-1:
+      HVM64: ami-0b18956f
+      HVMG2: NOT_SUPPORTED
+    sa-east-1:
+      HVM64: ami-07b14488da8ea02a0
+      HVMG2: NOT_SUPPORTED
+    cn-north-1:
+      HVM64: ami-0a4eaf6c4454eda75
+      HVMG2: NOT_SUPPORTED
+    cn-northwest-1:
+      HVM64: ami-6b6a7d09
+      HVMG2: NOT_SUPPORTED
+Resources:
+  WebServerInstance:
+    Type: 'AWS::EC2::Instance'
+    Metadata:
+      'AWS::CloudFormation::Init':
+        configSets:
+          InstallAndRun:
+            - Install
+            - Configure
+        Install:
+          packages:
+            yum:
+              mariadb: []
+              mariadb-server: []
+              httpd: []
+              php: []
+              htop: []
+          files:
+            /var/www/html/index.php:
+              content: !Join
+                - ''
+                - - |
+                    <html>
+                  - |2
+                      <head>
+                  - |2
+                        <title>AWS CloudFormation PHP Sample</title>
+                  - |2
+                        <meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+                  - |2
+                      </head>
+                  - |2
+                      <body>
+                  - |2
+                        <h1>Welcome to the AWS CloudFormation PHP Sample</h1>
+                  - |2
+                        <p/>
+                  - |2
+                        <?php
+                  - |2
+                          // Print out the current data and time
+                  - |2
+                          print "The Current Date and Time is: <br/>";
+                  - |2
+                          print date("g:i A l, F j Y.");
+                  - |2
+                        ?>
+                  - |2
+                        <p/>
+                  - |2
+                        <?php
+                  - |2
+                          // Setup a handle for CURL
+                  - |2
+                          $curl_handle=curl_init();
+                  - |2
+                          curl_setopt($curl_handle,CURLOPT_CONNECTTIMEOUT,2);
+                  - |2
+                          curl_setopt($curl_handle,CURLOPT_RETURNTRANSFER,1);
+                  - |2
+                          // Get the hostname of the intance from the instance metadata
+                  - |2
+                          curl_setopt($curl_handle,CURLOPT_URL,'http://169.254.169.254/latest/meta-data/public-hostname');
+                  - |2
+                          $hostname = curl_exec($curl_handle);
+                  - |2
+                          if (empty($hostname))
+                  - |2
+                          {
+                  - |2
+                            print "Sorry, for some reason, we got no hostname back <br />";
+                  - |2
+                          }
+                  - |2
+                          else
+                  - |2
+                          {
+                  - |2
+                            print "Server = " . $hostname . "<br />";
+                  - |2
+                          }
+                  - |2
+                          // Get the instance-id of the intance from the instance metadata
+                  - |2
+                          curl_setopt($curl_handle,CURLOPT_URL,'http://169.254.169.254/latest/meta-data/instance-id');
+                  - |2
+                          $instanceid = curl_exec($curl_handle);
+                  - |2
+                          if (empty($instanceid))
+                  - |2
+                          {
+                  - |2
+                            print "Sorry, for some reason, we got no instance id back <br />";
+                  - |2
+                          }
+                  - |2
+                          else
+                  - |2
+                          {
+                  - |2
+                            print "EC2 instance-id = " . $instanceid . "<br />";
+                  - |2
+                          }
+                  - |2
+                          $Database   = "localhost";
+                  - '      $DBUser     = "'
+                  - !Ref DBUser
+                  - |
+                    ";
+                  - '      $DBPassword = "'
+                  - !Ref DBPassword
+                  - |
+                    ";
+                  - |2
+                          print "Database = " . $Database . "<br />";
+                  - |2
+                          $dbconnection = mysql_connect($Database, $DBUser, $DBPassword)
+                  - |2
+                                          or die("Could not connect: " . mysql_error());
+                  - |2
+                          print ("Connected to $Database successfully");
+                  - |2
+                          mysql_close($dbconnection);
+                  - |2
+                        ?>
+                  - |2
+                        <h2>PHP Information</h2>
+                  - |2
+                        <p/>
+                  - |2
+                        <?php
+                  - |2
+                          phpinfo();
+                  - |2
+                        ?>
+                  - |2
+                      </body>
+                  - |
+                    </html>
+              mode: '000600'
+              owner: apache
+              group: apache
+            /tmp/setup.mysql:
+              content: !Join
+                - ''
+                - - 'CREATE DATABASE '
+                  - !Ref DBName
+                  - |
+                    ;
+                  - 'GRANT ALL ON '
+                  - !Ref DBName
+                  - .* TO '
+                  - !Ref DBUser
+                  - '''@localhost IDENTIFIED BY '''
+                  - !Ref DBPassword
+                  - |
+                    ';
+              mode: '000400'
+              owner: root
+              group: root
+            /etc/cfn/cfn-hup.conf:
+              content: !Join
+                - ''
+                - - |
+                    [main]
+                  - stack=
+                  - !Ref 'AWS::StackId'
+                  - |+
+
+                  - region=
+                  - !Ref 'AWS::Region'
+                  - |+
+
+              mode: '000400'
+              owner: root
+              group: root
+            /etc/cfn/hooks.d/cfn-auto-reloader.conf:
+              content: !Join
+                - ''
+                - - |
+                    [cfn-auto-reloader-hook]
+                  - |
+                    triggers=post.update
+                  - >
+                    path=Resources.WebServerInstance.Metadata.AWS::CloudFormation::Init
+                  - 'action=/opt/aws/bin/cfn-init -v '
+                  - '         --stack '
+                  - !Ref 'AWS::StackName'
+                  - '         --resource WebServerInstance '
+                  - '         --configsets InstallAndRun '
+                  - '         --region '
+                  - !Ref 'AWS::Region'
+                  - |+
+
+                  - |
+                    runas=root
+              mode: '000400'
+              owner: root
+              group: root
+          services:
+            sysvinit:
+              mariadb:
+                enabled: 'true'
+                ensureRunning: 'true'
+              httpd:
+                enabled: 'true'
+                ensureRunning: 'true'
+              cfn-hup:
+                enabled: 'true'
+                ensureRunning: 'true'
+                files:
+                  - /etc/cfn/cfn-hup.conf
+                  - /etc/cfn/hooks.d/cfn-auto-reloader.conf
+        Configure:
+          commands:
+            01_set_mysql_root_password:
+              command: !Join
+                - ''
+                - - mysqladmin -u root password '
+                  - !Ref DBRootPassword
+                  - ''''
+              test: !Join
+                - ''
+                - - '$(mysql '
+                  - !Ref DBName
+                  - ' -u root --password='''
+                  - !Ref DBRootPassword
+                  - ''' >/dev/null 2>&1 </dev/null); (( $? != 0 ))'
+            02_create_database:
+              command: !Join
+                - ''
+                - - mysql -u root --password='
+                  - !Ref DBRootPassword
+                  - ''' < /tmp/setup.mysql'
+              test: !Join
+                - ''
+                - - '$(mysql '
+                  - !Ref DBName
+                  - ' -u root --password='''
+                  - !Ref DBRootPassword
+                  - ''' >/dev/null 2>&1 </dev/null); (( $? != 0 ))'
+    Properties:
+      ImageId: !Ref LatestAmiId
+      InstanceType: !Ref InstanceType
+      SecurityGroups:
+        - !Ref SecurityGroup
+      KeyName: !Ref KeyName
+      Tags:
+        - Key: Name
+          Value: !Ref 'AWS::StackName'
+        - Key: CloudFormation
+          Value: true
+      UserData:
+        'Fn::Base64': !Sub >
+          #!/bin/bash -xe
+
+          yum install -y aws-cfn-bootstrap
+
+          yum update -y aws-cfn-bootstrap
+
+          yum update -y
+
+          mkdir /web && mkdir /web/${WebDomain} && mkdir /web/${WebDomain}/www
+          && mkdir /web/${WebDomain}/logs
+
+          mkdir /web/api.${WebDomain} && mkdir /web/api.${WebDomain}/www &&
+          mkdir /web/api.${WebDomain}/logs
+
+          echo 'mkdir /web && mkdir /web/${WebDomain} && mkdir
+          /web/${WebDomain}/www && mkdir /web/${WebDomain}/logs' >
+          /home/ec2-user/output.txt
+
+          echo 'mkdir /web/api.${WebDomain} && mkdir /web/api.${WebDomain}/www
+          && mkdir /web/api.${WebDomain}/logs' > /home/ec2-user/output.txt
+
+          yum -y install
+          https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+
+          yum -y install https://rpms.remirepo.net/enterprise/remi-release-7.rpm
+
+          yum -y install yum-utils
+
+          yum install mc -y
+
+          sudo yum-config-manager --disable 'remi-php*'
+
+          sudo amazon-linux-extras enable php8.1
+
+          sudo amazon-linux-extras enable mariadb10.5=latest
+
+          sudo yum clean metadata
+
+          #ADD SWAP
+
+          sudo dd if=/dev/zero of=/swapfile bs=128M count=32
+
+          sudo chmod 600 /swapfile
+
+          sudo mkswap /swapfile
+
+          sudo swapon /swapfile
+
+          sudo swapon -s
+
+          echo '/swapfile swap swap defaults 0 0' >>/etc/fstab
+
+          #add bash history search
+
+          echo '$include /etc/inputrc' >> /root/.inputrc
+
+          echo '"\e[A":history-search-backward' >> /root/.inputrc
+
+          echo '"\e[B":history-search-forward' >> /root/.inputrc
+
+          yum remove libzip -y
+
+          yum install php81 -y
+
+          yum install -y
+          php81-php-{cli,fpm,mysqlnd,devel,gd,mbstring,curl,xml,pear,bcmath,json,opcache,ldap,pdo,openssl,zip,iconv,xml,xmlwriter,exif,bcmath,zmq,pcntl,posix,ldap}
+
+          yum install php-fpm -y
+
+          amazon-linux-extras install -y php8.1
+
+          sudo yum clean all
+
+          sudo yum update all
+
+          yum install php81-php-tidy.x86_64 -y
+
+          /opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource
+          WebServerInstance --configsets InstallAndRun --region
+          ${AWS::Region}          
+
+          chown -R apache. /web
+
+          printf "<VirtualHost *:80>\nServerName ${WebDomain}\nServerAlias
+          www.${WebDomain}\nDocumentRoot /web/${WebDomain}/www\n<Directory
+          /web/${WebDomain}/www>\nOptions FollowSymLinks\nAllowOverride
+          All\nRequire all granted\n</Directory>\nErrorLog
+          /web/${WebDomain}/logs/error.log\nCustomLog
+          /web/${WebDomain}/logs/access.log common\n</VirtualHost>" >
+          /etc/httpd/conf.d/${WebDomain}.conf
+
+          printf "<VirtualHost *:80>\nServerName api.${WebDomain}\nServerAlias
+          www.api.${WebDomain}\nDocumentRoot
+          /web/api.${WebDomain}/www\n<Directory
+          /web/api.${WebDomain}/www>\nOptions FollowSymLinks\nAllowOverride
+          All\nRequire all granted\n</Directory>\nErrorLog
+          /web/api.${WebDomain}/logs/error.log\nCustomLog
+          /web/api.${WebDomain}/logs/access.log common\n</VirtualHost>" >
+          /etc/httpd/conf.d/api.${WebDomain}.conf
+
+          sed  -i '1 i\/web/*/logs/*.log' /etc/logrotate.d/httpd
+
+          systemctl restart httpd
+
+          printf "\nphp_admin_value date.timezone
+          'America/Los_Angeles'\nphp_admin_value max_execution_time
+          180\nphp_admin_value upload_max_filesize 50M" >>
+          /etc/httpd/conf.d/${WebDomain}.conf
+
+          yum --enablerepo=remi install -y phpMyAdmin 
+
+          printf "Alias /phpMyAdmin /usr/share/phpMyAdmin\nAlias /phpmyadmin
+          /usr/share/phpMyAdmin\n<Directory /usr/share/phpMyAdmin/>\n 
+          AddDefaultCharset UTF-8\n\nRequire ip
+          ${PMAWhiteListIp}\n</Directory>\n<Directory
+          /usr/share/phpMyAdmin/setup/>\nRequire all granted\n</Directory>  
+          \n<Directory /usr/share/phpMyAdmin/libraries/>\nOrder Deny,Allow\n 
+          Deny from All\nAllow from None\n</Directory>\n<Directory
+          /usr/share/phpMyAdmin/setup/lib/>\n  Order Deny,Allow\nDeny from
+          All\n  Allow from None\n  </Directory>\n<Directory
+          /usr/share/phpMyAdmin/setup/frames/>\nOrder Deny,Allow\n  Deny from
+          All\nAllow from None\n</Directory>" >
+          /etc/httpd/conf.d/phpMyAdmin.conf
+
+          sed -i 's,^max_execution_time =.*$,max_execution_time = 180,'
+          /etc/php.ini
+
+          sed -i 's,^max_input_time =.*$,max_input_time = 180,' /etc/php.ini
+
+          sed -i 's,^max_input_time =.*$,max_input_time = 180,' /etc/php.ini
+
+          sed -i 's,^memory_limit =.*$,memory_limit = 256M,' /etc/php.ini
+
+          sed -i 's,^post_max_size =.*$,post_max_size = 50M,' /etc/php.ini
+
+          sed -i 's,^upload_max_filesize =.*$,upload_max_filesize = 50M,'
+          /etc/php.ini          
+
+          systemctl restart httpd
+
+          printf "wget ${LinkToCRM} -P /web/${WebDomain}/www/" >>
+          /home/ec2-user/output.txt
+
+          wget ${LinkToCRM} -P /web/${WebDomain}/www/
+
+          unzip -o /web/${WebDomain}/www/*.zip -d '/web/${WebDomain}/www/'
+
+          mv /web/${WebDomain}/www/*/.[a-z]* /web/${WebDomain}/www
+
+          mv /web/${WebDomain}/www/*/* /web/${WebDomain}/www
+
+          find /web/${WebDomain}/www/ -maxdepth 1 -name "Espo*" -exec rm -R -f
+          {} \;
+
+
+          cd /web/${WebDomain}/www/ && find . -type d -exec chmod 755 {} + &&
+          find . -type f -exec chmod 644 {} +;
+
+          cd /web/${WebDomain}/www/ && find data custom client/custom -type d
+          -exec chmod 775 {} + && find data custom client/custom -type f -exec
+          chmod 664 {} +;
+
+          cd /web/${WebDomain}/www/ && chmod 775 application/Espo/Modules
+          client/modules;
+
+          cd /web/${WebDomain}/www/ && chmod 754 bin/command;
+
+          cd /web/${WebDomain}/www/ && chown -R apache:apache .;
+
+          #cd /web/${WebDomain}/www/client/img && wget -q ${LinkToFaviconIco} -O
+          /home/ec2-user/output.txt ;
+
+          curl ${LinkToFaviconIco} >
+          /web/${WebDomain}/www/client/img/favicon.ico
+
+          curl ${LinkToFavicon196196} >
+          /web/${WebDomain}/www/client/img/favicon196x196.png
+
+          #cd /web/${WebDomain}/www/client/img && wget -q ${LinkToFavicon196196}
+          -O /home/ec2-user/output.txt ;
+
+          #printf "* * * * * root /usr/bin/php -f /web/${WebDomain}/www/cron.php
+          > /dev/null 2>&1\n" >> /etc/crontab
+
+          printf " * * * * * root cd /web/${WebDomain}/www; /usr/bin/php -f
+          cron.php > /dev/null 2>&1"  >> /etc/crontab
+
+          sudo hostnamectl set-hostname ${WebDomain}
+
+          printf "ZONE="America/Los_Angeles"" > /etc/sysconfig/clock
+
+          sudo ln -sf /usr/share/zoneinfo/America/Los_Angeles /etc/localtime
+
+          usermod -a -G apache ec2-user
+
+          #certbot
+
+          yum install certbot python2-certbot-apache mod_ssl -y
+
+          printf "0 0,12 * * * python -c 'import random; import time;
+          time.sleep(random.random() * 3600)' && certbot renew" >> /etc/crontab
+
+
+          /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource
+          WebServerInstance --region ${AWS::Region}
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT20M
+  ElasticIP:
+    Type: 'AWS::EC2::EIP'
+    Properties:
+      InstanceId: !Ref WebServerInstance
+Outputs:
+  InstanceId:
+    Description: InstanceId of the newly created EC2 instance
+    Value: !Ref WebServerInstance
+  AZ:
+    Description: Availability Zone of the newly created EC2 instance
+    Value: !GetAtt
+      - WebServerInstance
+      - AvailabilityZone
+  PublicDNS:
+    Description: Public DNSName of the newly created EC2 instance
+    Value: !GetAtt
+      - WebServerInstance
+      - PublicDnsName
+  PublicIP:
+    Description: Public IP address of the newly created EC2 instance
+    Value: !GetAtt
+      - WebServerInstance
+      - PublicIp
